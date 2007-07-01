@@ -20,4 +20,4 @@ requires:
   Data::Visitor::Callback: 0
   Digest::MD5: 0
   HTML-FormFu: 0
-version: 0.01000
+version: 0.01001

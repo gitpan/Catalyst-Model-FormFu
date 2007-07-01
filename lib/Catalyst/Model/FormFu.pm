@@ -1,4 +1,4 @@
-# $Id: /local/perl/Catalyst-Model-FormFu/trunk/lib/Catalyst/Model/FormFu.pm 12782 2007-06-30T01:01:11.709709Z daisuke  $
+# $Id: /local/perl/Catalyst-Model-FormFu/trunk/lib/Catalyst/Model/FormFu.pm 12785 2007-07-01T05:08:51.862102Z daisuke  $
 #
 # Copyright (c) 2007 Daisuke Maki <daisuke@endeworks.jp>
 
@@ -6,7 +6,7 @@ package Catalyst::Model::FormFu;
 use strict;
 use warnings;
 use base qw(Catalyst::Model);
-our $VERSION = '0.01000';
+our $VERSION = '0.01001';
 use Class::C3;
 use Config::Any;
 use Data::Visitor::Callback;
