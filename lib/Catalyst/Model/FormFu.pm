@@ -1,293 +1,175 @@
-# $Id: /local/perl/Catalyst-Model-FormFu/trunk/lib/Catalyst/Model/FormFu.pm 12785 2007-07-01T05:08:51.862102Z daisuke  $
-#
-# Copyright (c) 2007 Daisuke Maki <daisuke@endeworks.jp>
-
 package Catalyst::Model::FormFu;
+BEGIN {
+  $Catalyst::Model::FormFu::VERSION = '0.001';
+}
+
+# ABSTRACT: Speedier interface to HTML::FormFu for Catalyst
+
 use strict;
 use warnings;
-use base qw(Catalyst::Model);
-our $VERSION = '0.01001';
-use Class::C3;
-use Config::Any;
-use Data::Visitor::Callback;
 use HTML::FormFu;
+use HTML::FormFu::Library;
+use Moose;
+use namespace::clean -except => 'meta';
 
-BEGIN
-{
-    Class::C3::initialize();
-}
+extends 'Catalyst::Model';
+with 'Catalyst::Component::InstancePerContext';
 
-__PACKAGE__->mk_accessors($_) for qw(context visitor config_dir constructor_args cache_backend stash_key);
+has model_stash => ( is => 'ro', isa => 'HashRef' );
+has constructor => ( is => 'ro', isa => 'HashRef', default => sub { {} } );
+has forms       => ( is => 'ro', required => 1, isa => 'HashRef' );
+has cache       => ( is => 'ro', required => 1, isa => 'HashRef', builder => '_build_cache' );
 
-sub ACCEPT_CONTEXT
+sub _build_cache
 {
     my $self = shift;
-    $self->context($_[0]);
-    return $self;
-}
 
-sub load_form
-{
-    my $self   = shift;
-    my $c      = eval { $_[0]->isa('Catalyst') } ? shift : $self->context;
-    my $config = shift;
+    my %cache;
 
-    my $method = 
-        (eval { $config->isa('Path::Class::File') } || ! ref $config) ?
-            '_load_from_file' :
-            '_load_from_hash'
-    ;
-    my $form =  $self->$method($c, $config);
-
-    # Actuall process the form
-    $form->process( $c->request );
-    if (my $key = $self->stash_key) {
-        $c->stash->{$key} = $form;
+    while ( my ($id, $config_file) = each %{$self->forms} )
+    {
+        my %args = ( query_type => 'Catalyst', %{$self->constructor} );
+        my $form = HTML::FormFu->new(\%args);
+        $form->load_config_file($config_file);
+        $cache{$id} = $form;
     }
-    return $form;
+
+    return \%cache;
 }
 
-sub _cache
-{
+sub build_per_context_instance {
+
     my ($self, $c) = @_;
-    my $backend = $self->cache_backend;
-    return $c->can('cache') && $backend ?
-        $c->cache( $backend ) :
-        ()
-    ;
+
+    my %args = (
+        cache => $self->cache,
+        query => $c->request->query_parameters,
+    );
+
+    $args{model} = $c->model($self->model_stash->{schema}) if $self->model_stash;
+
+    return HTML::FormFu::Library->new(%args);
 }
 
-sub _load_from_file
-{
-    my ($self, $c, $file) = @_;
+__PACKAGE__->meta->make_immutable;
 
-    if (! ref $file) {
-        $file = Path::Class::File->new($file);
-    }
-
-    if (! $file->is_absolute) {
-        # if this exists in the config...
-        my $dir = $self->config_dir;
-        $file = $dir ?
-            Path::Class::Dir->new($dir)->file($file) :
-            $c->path_to(qw(root formfu), $file)
-        ;
-    }
-
-    # finally
-    $file = $file->stringify;
-
-    my $form;
-    my $cache = $self->_cache($c);
-    if ($cache) {
-        $form = $cache->get($file);
-    }
-
-    if (! $form) {
-        my $loaded = Config::Any->load_files({ files => [$file], use_ext => 1 });
-        my $config = $loaded->[0]->{$file} ||
-            Catalyst::Exception->throw("Could not load form $file");
-        $config    = $self->_filter_dynamic_values($c, $config);
-        $form      = $self->_construct_formfu($c, $config);
-
-        $cache->set($file, $form) if $cache;
-    }
-    return $form;
-}
-
-sub _load_from_hash
-{
-    my ($self, $c, $config) = @_;
-
-    my $form;
-    my $cache = $self->_cache($c);
-    my $key;
-    if ($cache) {
-        $key = do {
-            require Data::Dumper;
-            require Digest::MD5;
-            local $Data::Dumper::Indent   = 1;
-            local $Data::Dumper::Sortkeys = 1;
-            local $Data::Dumper::Terse    = 1;
-
-            Digest::MD5::md5_hex( Data::Dumper::Dumper($config) );
-        };
-        $form = $cache->get($key);
-    }
-
-    if (! $form) {
-        $config = $self->_filter_dynamic_values($c, $config);
-        $form   = $self->_construct_formfu($c, $config);
-
-        $cache->set($key, $form) if $cache;
-    }
-
-    return $form;
-}
-
-sub _construct_formfu
-{
-    my ($self, $c, $config) = @_;
-
-    my $constructor_args = $self->constructor_args || {};
-    $constructor_args->{query_type} = 'Catalyst';
-    $constructor_args->{render_class_args} ||= {};
-    $constructor_args->{render_class_args}->{INCLUDE_PATH} ||= $c->path_to('root', 'formfu')->stringify;
-
-    my $form = HTML::FormFu->new($constructor_args);
-    $form->populate($config);
-
-    return $form;
-}
-
-sub _filter_dynamic_values
-{
-    my ($self, $c, $config) = @_;
-
-    my $visitor = $self->visitor;
-    if (! $visitor) {
-        $visitor = Data::Visitor::Callback->new(
-            plain_value => sub {
-                my ($visitor, $value) = @_;
-                if ($value !~ /^__dynamic\(([^\)]+)\)__$/) {
-                    return $value;
-                }
-
-                my $method = $1;
-                return $self->$method($self->context);
-            }
-        );
-        $self->visitor($visitor);
-    }
-
-    return $visitor->visit($config);
-}
-
-1;
 
 __END__
+=pod
+
+=for :stopwords Peter Shangov precompiled
 
 =head1 NAME
 
-Catalyst::Model::FormFu - FormFu In Your Model
+Catalyst::Model::FormFu - Speedier interface to HTML::FormFu for Catalyst
+
+=head1 VERSION
+
+version 0.001
 
 =head1 SYNOPSIS
 
-  # Install formfu elements
-  # (See perldoc Catalyst::Helper::Model::FormFu)
-  ./script/myapp_create.pl model YourModelName FormFu [dirname]
+    package MyApp
+    {
 
-  # In your app
-  MyApp->config(
-    'Model::FormFu' => {
-      cache_backend   => 'formfu', # optional
-      contructor_args => { ... },  # optional
-      stash_key       => 'form',   # optional
+        use parent 'Catalyst';
+
+        __PACKAGE__->config( 'Model::FormFu' => {
+            model_stash => { schema => 'MySchema' },
+            constructor => { config_file_path => 'myapp/root/forms' },
+            forms => {
+                form1 => 'form1.yaml',
+                form2 => 'form2.yaml',
+            ]
+        } );
+
     }
-  );
 
-  # in your controller
-  sub foo : Local
-  {
-     my ($self, $c) = @_;
-     $c->model('FormFu')->load_form('path/to/file.yml');
-  }
+    package MyApp::Controller::WithForms
+    {
+        use parent 'Catalyst::Controller';
+
+        sub edit :Local
+        {
+            my ($self, $c, @args) = @_;
+
+            my $form1 = $c->model('FormFu')->form('form1');
+
+            if ($form1->submitted_and_valid)
+            ...
+        }
+
+    }
+
+    package MyApp::Model::FormFu
+    {
+        use parent 'Catalyst::Model::FormFu';
+    }
 
 =head1 DESCRIPTION
 
-Catalyst::Model::FormFu allows you to use HTML::FormFu from your Catalyst
-model, fully with caching and support for inserting dynamic values.
+C<Catalyst::Model::FormFu> is an alternative interface for using L<HTML::FormFu> within L<Catalyst>. It differs from L<Catalyst::Controller::HTML::FormFu> in the following ways:
 
-=head1 STASH KEY
+=over 4
 
-When a form is loaded via load_form(), you can automatically tell 
-Catalyst::Model::FormFu to populate a stash key, so you can immediately
-use it in your template.
+=item *
 
-Just specify the stash_key config parameter:
+It initializes all required form objects when your app is started, and returns clones of these objects in your actions. This avoids having to call L<HTML::FormFu/load_config_file> and L<HTML::FormFu/populate> every time you display a form, potentially leading to performance improvements in persistent applications.
 
-  MyApp->config(
-    'Model::FormFu' => {
-       stash_key => 'form'
-    }
-  );
+=item *
 
-In your controller, just load the form:
+It does not inherit from L<Catalyst::Controller>, and so is safe to use with other modules that do so, in particular L<Catalyst::Controller::ActionRole>.
 
-  sub foo : Local {
-    my($self, $c) = @_;
-    my $form = $c->model('FormFu')->load_form('path/to/form.yml');
-    if ($form->submitted_and_valid) {
-       ...
-    }
-  }
+=back
 
-Then you can simply say in your template:
+=head1 CONFIGURATION OPTIONS
 
-  [% form %]
+C<Catalyst::Model::FormFu> accepts the following configuration options
 
-=head1 DYNAMIC VALUES
+=over
 
-If you use the following construct anywhere in your config, the values
-will be replaced by dyamic values:
+=item forms
 
-  - type: text
-    value: __dynamic(method_name)__
+A hashref where keys are the names by which the forms will be accessed, and the values are the configuration files that will be loaded for the respective forms.
 
-The value will be replaced by the return value from calling $model->method_name($c)
+=item constructor
 
-For example, if you want to pull out values from the database and put them
-in a select field:
+A hashref of options that will be passed to C<HTML::FormFu-E<gt>new(...)> for every form that is created.
 
-  # config
-  - type: select
-    options: __dynamic(select_from_db)__
+=item model_stash
 
-  # MyApp::Model::FormFu
-  sub select_from_db {
-    my ($self, $c) = @_;
-    my @values = $c->model('DBIC')->resultset('SelectValues')->all;
-    # munge @values so that it conforms to HTML::FormFu's spec
-    ....
+A hashref with a C<stash> key whose value is the name of a Catalyst model class that will be place in the form stash for use by L<HTML::FormFu::Model::DBIC>.
 
-    return \@values;
-  }
+=back
 
-=head1 CACHE
+=head1 USAGE
 
-FormFu objects will be used many times through the life cycle of your
-Catalyst application and since forms don't change, caching an already
-constructed form will make your forms much faster.
+Use the C<form> method of the model to fetch one or more forms by their names. The form is loaded with the current request parameters and processed.
 
-Caching is done through Catalyst::Plugin::Cache. Setup one, and 
-Catalyst::Model::FormFu will use default cache backend. If you create
-multiple cache backends and want to use a particular one of those, specify
-it in the config:
+=head1 SEE ALSO
 
-  MyApp->config(
-    'Model::FormFu' => {
-      cache_backend => 'formfu'
-    }
-  )
-  
-=head1 METHODS
+=over 4
 
-=head2 load_form($config)
+=item *
 
-Loads HTML::FormFu from config. $config can either be the path to the
-config file, or a hash that contains the config.
+L<Catalyst::Controller::HTML::FormFu>
 
-=head2 ACCEPT_CONTEXT
+=item *
+
+L<HTML::FormFu::Library>
+
+=back
 
 =head1 AUTHOR
 
-2007 Copyright (c) Daisuke Maki C<daisuke@endeworks.jp>
+Peter Shangov <pshangov@yahoo.com>
 
-=head1 LICENSE
+=head1 COPYRIGHT AND LICENSE
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This software is copyright (c) 2011 by Peter Shangov.
 
-See http://www.perl.com/perl/misc/Artistic.html
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
+
