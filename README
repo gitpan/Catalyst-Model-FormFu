@@ -3,7 +3,7 @@ NAME
     Catalyst
 
 VERSION
-    version 0.001
+    version 0.002
 
 SYNOPSIS
         package MyApp
@@ -51,12 +51,18 @@ DESCRIPTION
     *   It initializes all required form objects when your app is started,
         and returns clones of these objects in your actions. This avoids
         having to call "load_config_file" in HTML::FormFu and "populate" in
-        HTML::FormFu every time you display a form, potentially leading to
-        performance improvements in persistent applications.
+        HTML::FormFu every time you display a form, leading to performance
+        improvements in persistent applications.
 
     *   It does not inherit from Catalyst::Controller, and so is safe to use
         with other modules that do so, in particular
         Catalyst::Controller::ActionRole.
+
+    Note that this is a completely different module from the original
+    "Catalyst::Model::FormFu" by <Daisuke Maki>, which is now only available
+    on the BackPAN
+    (<http://backpan.perl.org/authors/id/D/DM/DMAKI/Catalyst-Model-FormFu-0.
+    01001.tar.gz>).
 
 CONFIGURATION OPTIONS
     "Catalyst::Model::FormFu" accepts the following configuration options

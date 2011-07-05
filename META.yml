@@ -47,4 +47,4 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=Catalyst-Model-FormFu
   homepage: http://github.com/pshangov/catalyst-model-formfu/tree
   repository: git://github.com/pshangov/catalyst-model-formfu.git
-version: 0.001
+version: 0.002

@@ -1,6 +1,6 @@
 package HTML::FormFu::Library;
 BEGIN {
-  $HTML::FormFu::Library::VERSION = '0.001';
+  $HTML::FormFu::Library::VERSION = '0.002';
 }
 
 # ABSTRACT: Library of precompiled HTML::FormFu forms
@@ -60,7 +60,7 @@ __PACKAGE__->meta->make_immutable;
 __END__
 =pod
 
-=for :stopwords Peter Shangov precompiled
+=for :stopwords Peter Shangov precompiled BackPAN Daisuke Maki
 
 =head1 NAME
 
@@ -68,7 +68,7 @@ HTML::FormFu::Library - Library of precompiled HTML::FormFu forms
 
 =head1 VERSION
 
-version 0.001
+version 0.002
 
 =head1 SYNOPSIS
 
