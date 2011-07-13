@@ -1,6 +1,6 @@
 package Catalyst::Model::FormFu;
 BEGIN {
-  $Catalyst::Model::FormFu::VERSION = '0.002';
+  $Catalyst::Model::FormFu::VERSION = '0.003';
 }
 
 # ABSTRACT: Speedier interface to HTML::FormFu for Catalyst
@@ -65,7 +65,7 @@ Catalyst::Model::FormFu - Speedier interface to HTML::FormFu for Catalyst
 
 =head1 VERSION
 
-version 0.002
+version 0.003
 
 =head1 SYNOPSIS
 

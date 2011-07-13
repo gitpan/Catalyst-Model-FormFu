@@ -14,7 +14,6 @@ my %WriteMakefileArgs = (
   'BUILD_REQUIRES' => {
     'Catalyst' => '0',
     'Catalyst::Controller' => '0',
-    'Catalyst::Controller::HTML::FormFu' => '0',
     'Catalyst::Engine::HTTP' => '0',
     'Catalyst::Model::DBIC::Schema' => '0',
     'Catalyst::Restarter' => '0',
@@ -27,6 +26,7 @@ my %WriteMakefileArgs = (
     'File::Temp' => '0',
     'FindBin' => '0',
     'Getopt::Long' => '0',
+    'HTML::FormFu::Model::DBIC' => '0.09000',
     'Path::Class' => '0',
     'Pod::Usage' => '0',
     'Test::More' => '0',
@@ -49,7 +49,7 @@ my %WriteMakefileArgs = (
     'Moose' => '0',
     'namespace::clean' => '0'
   },
-  'VERSION' => '0.002',
+  'VERSION' => '0.003',
   'test' => {
     'TESTS' => 't/*.t'
   }

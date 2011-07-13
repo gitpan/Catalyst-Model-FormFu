@@ -1,6 +1,6 @@
 package HTML::FormFu::Library;
 BEGIN {
-  $HTML::FormFu::Library::VERSION = '0.002';
+  $HTML::FormFu::Library::VERSION = '0.003';
 }
 
 # ABSTRACT: Library of precompiled HTML::FormFu forms
@@ -68,7 +68,7 @@ HTML::FormFu::Library - Library of precompiled HTML::FormFu forms
 
 =head1 VERSION
 
-version 0.002
+version 0.003
 
 =head1 SYNOPSIS
 
