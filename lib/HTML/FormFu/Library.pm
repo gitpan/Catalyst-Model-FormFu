@@ -1,6 +1,6 @@
 package HTML::FormFu::Library;
 BEGIN {
-  $HTML::FormFu::Library::VERSION = '0.003';
+  $HTML::FormFu::Library::VERSION = '0.004';
 }
 
 # ABSTRACT: Library of precompiled HTML::FormFu forms
@@ -10,10 +10,14 @@ use warnings;
 
 use Moose;
 use namespace::clean -except => 'meta';
-use Data::Printer;
 
-has model => ( is => 'ro' );
-has query => ( is => 'ro' );
+has model               => ( is => 'ro' );
+has query               => ( is => 'ro' );
+has stash               => ( is => 'ro' );
+has action              => ( is => 'ro' );
+has languages           => ( is => 'ro' );
+has config_callback     => ( is => 'ro' );
+has add_localize_object => ( is => 'ro' );
 
 has cache =>
 (
@@ -43,11 +47,17 @@ sub raw_form
 
     Carp::croak("Please specify which forms you want to access") unless @names;
 
-    my @forms =
-        map { $_->stash( schema => $self->model ) }
-        map { $_->query($self->query) }
-        map { $_->clone }
-        $self->cached_form(@names);
+    my @forms = map { $_->clone } $self->cached_form(@names);
+
+    my @methods = qw(stash query action languages config_callback add_localize_object);
+
+    foreach my $form (@forms)
+    {
+        foreach my $method (@methods)
+        {
+            $form->$method( $self->$method ) if $self->$method;
+        }
+    }
 
     return wantarray
         ? @forms
@@ -60,7 +70,7 @@ __PACKAGE__->meta->make_immutable;
 __END__
 =pod
 
-=for :stopwords Peter Shangov precompiled BackPAN Daisuke Maki
+=for :stopwords Peter Shangov precompiled BackPAN Daisuke Maki FormFu FormFu's
 
 =head1 NAME
 
@@ -68,7 +78,7 @@ HTML::FormFu::Library - Library of precompiled HTML::FormFu forms
 
 =head1 VERSION
 
-version 0.003
+version 0.004
 
 =head1 SYNOPSIS
 

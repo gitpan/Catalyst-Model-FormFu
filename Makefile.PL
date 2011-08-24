@@ -44,12 +44,12 @@ my %WriteMakefileArgs = (
   'PREREQ_PM' => {
     'Catalyst::Component::InstancePerContext' => '0',
     'Catalyst::Model' => '0',
-    'Data::Printer' => '0',
     'HTML::FormFu' => '0',
     'Moose' => '0',
+    'Scalar::Util' => '0',
     'namespace::clean' => '0'
   },
-  'VERSION' => '0.003',
+  'VERSION' => '0.004',
   'test' => {
     'TESTS' => 't/*.t'
   }
